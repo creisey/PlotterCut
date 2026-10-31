@@ -129,6 +129,22 @@ final class AppModel: ObservableObject {
         fileName = "Demo"
     }
 
+    // MARK: Doppelte Pfade
+
+    /// Entfernt Pfade, die exakt übereinanderliegen (z. B. Fläche und Kontur aus Illustrator).
+    private static func removeDuplicates(_ paths: [Polyline]) -> [Polyline] {
+        func same(_ a: [CGPoint], _ b: [CGPoint]) -> Bool {
+            guard a.count == b.count else { return false }
+            func close(_ p: CGPoint, _ q: CGPoint) -> Bool { abs(p.x - q.x) < 0.05 && abs(p.y - q.y) < 0.05 }
+            return zip(a, b).allSatisfy(close) || zip(a, b.reversed()).allSatisfy(close)
+        }
+        var out: [Polyline] = []
+        for p in paths where !out.contains(where: { same($0.points, p.points) }) {
+            out.append(p)
+        }
+        return out
+    }
+
     // MARK: Aktionen
 
     func refreshPorts() {
@@ -146,8 +162,12 @@ final class AppModel: ObservableObject {
             case "ai", "pdf": source = try PDFImporter.load(url: url)
             default:          source = try SVGImporter.load(url: url)
             }
+            let before = source.count
+            source = Self.removeDuplicates(source)
+            let removed = before - source.count
             fileName = url.lastPathComponent
-            status = "\(source.count) Pfade geladen"
+            status = removed > 0 ? "\(source.count) Pfade geladen, \(removed) doppelte entfernt"
+                                 : "\(source.count) Pfade geladen"
         } catch {
             status = error.localizedDescription
         }
