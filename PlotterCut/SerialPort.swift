@@ -1,7 +1,7 @@
 import Foundation
 import Darwin
 
-enum FlowControl: String, CaseIterable, Identifiable {
+enum FlowControl: String, CaseIterable, Identifiable, Codable {
     case none = "Keine", xonxoff = "XON/XOFF", rtscts = "RTS/CTS"
     var id: String { rawValue }
 }
@@ -20,7 +20,7 @@ enum SerialPort {
             .sorted().map { "/dev/" + $0 }
     }
 
-    nonisolated static func send(_ data: Data, to path: String, baud: Int, flow: FlowControl) throws {
+    nonisolated static func send(_ data: Data, to path: String, baud: Int, flow: FlowControl, dropLines: Bool) throws {
         let fd = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK)
         guard fd >= 0 else { throw SerialError.failed("Port öffnen fehlgeschlagen: \(String(cString: strerror(errno)))") }
         defer { close(fd) }
@@ -31,8 +31,9 @@ enum SerialPort {
         cfmakeraw(&t)
         cfsetspeed(&t, speed_t(baud))
         t.c_cflag |= tcflag_t(CS8 | CLOCAL | CREAD)
-        t.c_cflag &= ~tcflag_t(PARENB | CSTOPB | CCTS_OFLOW | CRTS_IFLOW)
+        t.c_cflag &= ~tcflag_t(PARENB | CSTOPB | CCTS_OFLOW | CRTS_IFLOW | HUPCL)
         t.c_iflag &= ~tcflag_t(IXON | IXOFF | IXANY)
+        if dropLines { t.c_cflag |= tcflag_t(HUPCL) } // DTR/RTS beim Schliessen abschalten
         switch flow {
         case .xonxoff: t.c_iflag |= tcflag_t(IXON | IXOFF)
         case .rtscts:  t.c_cflag |= tcflag_t(CCTS_OFLOW | CRTS_IFLOW)

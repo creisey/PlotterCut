@@ -1,7 +1,9 @@
 import CoreGraphics
 
-struct CutSettings {
-    var scale: Double = 100        // %
+struct CutSettings: Codable {
+    var scaleX: Double = 100       // %
+    var scaleY: Double = 100       // %
+    var lockAspect = true
     var rotate90 = false
     var mirror = false
     var offsetX: Double = 2        // mm
@@ -10,15 +12,20 @@ struct CutSettings {
     var gap: Double = 5
     var weedBox = false
     var weedMargin: Double = 3
-    var bladeOffset: Double = 0.25
+    var bladeOffset: Double = 0.30
     var overcut: Double = 1
+    var advance: Double = 110      // mm Vorschub nach dem Schnitt, 0 = kein Vorschub
+}
+
+enum OutputFormat: String, CaseIterable, Identifiable, Codable {
+    case dmpl = "DMPL", hpgl = "HPGL"
+    var id: String { rawValue }
 }
 
 enum Layout {
     static func place(_ src: [Polyline], _ s: CutSettings) -> [Polyline] {
         guard !src.isEmpty else { return [] }
-        let f = CGFloat(s.scale / 100)
-        var p = src.applying(CGAffineTransform(scaleX: f, y: f))
+        var p = src.applying(CGAffineTransform(scaleX: CGFloat(s.scaleX / 100), y: CGFloat(s.scaleY / 100)))
         if s.rotate90 { p = p.applying(CGAffineTransform(a: 0, b: -1, c: 1, d: 0, tx: 0, ty: 0)) }
         if s.mirror { p = p.applying(CGAffineTransform(scaleX: -1, y: 1)) }
         var b = p.bounds
@@ -102,10 +109,11 @@ enum Knife {
     }
 }
 
+private func plotUnits(_ v: CGFloat) -> Int { Int((v * 40).rounded()) } // 40 Einheiten pro mm
+
 enum HPGL {
-    /// 40 Plottereinheiten pro mm
-    static func make(_ paths: [[CGPoint]], velocity: Int, force: Int) -> String {
-        func u(_ v: CGFloat) -> Int { Int((v * 40).rounded()) }
+    static func make(_ paths: [[CGPoint]], velocity: Int, force: Int, advance: Double, end: String) -> String {
+        let u = plotUnits
         var s = "IN;"
         if velocity > 0 { s += "VS\(velocity);" }
         if force > 0 { s += "FS\(force);" }
@@ -114,7 +122,29 @@ enum HPGL {
             s += "PU\(u(pts[0].x)),\(u(pts[0].y));"
             for p in pts.dropFirst() { s += "PD\(u(p.x)),\(u(p.y));" }
         }
-        s += "PU0,0;"
+        if advance > 0, let maxX = paths.flatMap({ $0 }).map(\.x).max() {
+            s += "PU\(u(maxX + CGFloat(advance))),0;"
+        } else {
+            s += "PU0,0;"
+        }
+        s += end
+        return s
+    }
+}
+
+/// Houston-Instrument-Format, wie SignCut es an den Secabo C40 sendet.
+enum DMPL {
+    static func make(_ paths: [[CGPoint]], advance: Double) -> String {
+        let u = plotUnits
+        var s = ";:H A L0 ECN "
+        for pts in paths {
+            s += "U\(u(pts[0].x)),\(u(pts[0].y)) "
+            for p in pts.dropFirst() { s += "D\(u(p.x)),\(u(p.y)) " }
+        }
+        if advance > 0, let maxX = paths.flatMap({ $0 }).map(\.x).max() {
+            s += "U\(u(maxX + CGFloat(advance))),0 "
+        }
+        s += "U F @ "
         return s
     }
 }
