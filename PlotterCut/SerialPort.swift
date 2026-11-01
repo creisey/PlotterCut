@@ -4,6 +4,7 @@ import Darwin
 enum FlowControl: String, CaseIterable, Identifiable, Codable {
     case none = "Keine", xonxoff = "XON/XOFF", rtscts = "RTS/CTS"
     var id: String { rawValue }
+    var label: String { self == .none ? L.t("Keine", "None") : rawValue }
 }
 
 enum SerialError: LocalizedError {
@@ -22,12 +23,12 @@ enum SerialPort {
 
     nonisolated static func send(_ data: Data, to path: String, baud: Int, flow: FlowControl, dropLines: Bool) throws {
         let fd = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK)
-        guard fd >= 0 else { throw SerialError.failed("Port öffnen fehlgeschlagen: \(String(cString: strerror(errno)))") }
+        guard fd >= 0 else { throw SerialError.failed(L.t("Port öffnen fehlgeschlagen", "Could not open port") + ": \(String(cString: strerror(errno)))") }
         defer { close(fd) }
         _ = fcntl(fd, F_SETFL, 0) // wieder blockierend
 
         var t = termios()
-        guard tcgetattr(fd, &t) == 0 else { throw SerialError.failed("Port-Einstellungen nicht lesbar") }
+        guard tcgetattr(fd, &t) == 0 else { throw SerialError.failed(L.t("Port-Einstellungen nicht lesbar", "Cannot read port settings")) }
         cfmakeraw(&t)
         cfsetspeed(&t, speed_t(baud))
         t.c_cflag |= tcflag_t(CS8 | CLOCAL | CREAD)
@@ -39,7 +40,7 @@ enum SerialPort {
         case .rtscts:  t.c_cflag |= tcflag_t(CCTS_OFLOW | CRTS_IFLOW)
         case .none:    break
         }
-        guard tcsetattr(fd, TCSANOW, &t) == 0 else { throw SerialError.failed("Port-Einstellungen nicht setzbar") }
+        guard tcsetattr(fd, TCSANOW, &t) == 0 else { throw SerialError.failed(L.t("Port-Einstellungen nicht setzbar", "Cannot set port settings")) }
         tcflush(fd, TCIOFLUSH)
 
         try data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
@@ -49,7 +50,7 @@ enum SerialPort {
                 let n = write(fd, base + off, min(256, raw.count - off))
                 if n < 0 {
                     if errno == EINTR || errno == EAGAIN { usleep(1000); continue }
-                    throw SerialError.failed("Senden fehlgeschlagen: \(String(cString: strerror(errno)))")
+                    throw SerialError.failed(L.t("Senden fehlgeschlagen", "Sending failed") + ": \(String(cString: strerror(errno)))")
                 }
                 off += n
             }

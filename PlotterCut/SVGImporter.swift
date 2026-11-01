@@ -5,8 +5,8 @@ enum SVGError: LocalizedError {
     case unreadable, empty
     var errorDescription: String? {
         switch self {
-        case .unreadable: return "SVG konnte nicht gelesen werden."
-        case .empty: return "Keine schneidbaren Pfade gefunden."
+        case .unreadable: return L.t("Datei konnte nicht gelesen werden.", "File could not be read.")
+        case .empty: return L.t("Keine schneidbaren Pfade gefunden.", "No cuttable paths found.")
         }
     }
 }

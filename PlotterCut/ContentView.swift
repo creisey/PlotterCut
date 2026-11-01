@@ -17,85 +17,93 @@ struct ContentView: View {
                 Section {
                     HStack {
                         Button { m.cut() } label: {
-                            Label("Schneiden", systemImage: "scissors").frame(maxWidth: .infinity)
+                            Label(L.t("Schneiden", "Cut"), systemImage: "scissors").frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
                         .disabled(m.source.isEmpty || m.busy)
-                        Button("Testschnitt") { m.testCut() }
+                        Button(L.t("Testschnitt", "Test cut")) { m.testCut() }
                             .controlSize(.large)
                             .disabled(m.busy)
                     }
-                    Text(m.status.isEmpty ? "Bereit · \(m.port.isEmpty ? "kein Port" : m.port)" : m.status)
+                    Text(m.status.isEmpty ? L.t("Bereit", "Ready") + " · " + (m.port.isEmpty ? L.t("kein Port", "no port") : m.port) : m.status)
                         .font(.caption).foregroundStyle(.secondary)
-                    if m.tooWide { Text("Motiv breiter als Material!").foregroundStyle(.red) }
+                    if m.tooWide { Text(L.t("Motiv breiter als Material!", "Design wider than material!")).foregroundStyle(.red) }
                 }
 
-                Section("Datei") {
+                Section(L.t("Datei", "File")) {
                     HStack {
-                        Button("Datei öffnen …") { importing = true }
+                        Button(L.t("Datei öffnen …", "Open file …")) { importing = true }
                         Spacer()
                         Button { showInfo.toggle() } label: { Image(systemName: "info.circle") }
                             .buttonStyle(.borderless)
-                            .help("Hinweise zum Import")
+                            .help(L.t("Hinweise zum Import", "Import notes"))
                             .popover(isPresented: $showInfo, arrowEdge: .trailing) { ImportInfo() }
                     }
                     HStack {
-                        Text(m.fileName.isEmpty ? "Keine Datei" : m.fileName)
+                        Text(m.fileName.isEmpty ? L.t("Keine Datei", "No file") : m.fileName)
                         Spacer()
                         Text(".svg · .ai · .pdf").font(.caption)
                     }
                     .foregroundStyle(.secondary)
                 }
 
-                Section("Grösse und Anordnung") {
-                    TextField("Breite (mm)", value: $m.designWidth, format: .number.precision(.fractionLength(1)))
+                Section(L.t("Grösse und Anordnung", "Size and layout")) {
+                    TextField(L.t("Skalierung (%)", "Scale (%)"), value: $m.scalePercent, format: .number.precision(.fractionLength(0...2)))
                         .disabled(m.source.isEmpty)
-                    TextField("Höhe (mm)", value: $m.designHeight, format: .number.precision(.fractionLength(1)))
+                    TextField(L.t("Breite (mm)", "Width (mm)"), value: $m.designWidth, format: .number.precision(.fractionLength(1)))
+                        .disabled(m.source.isEmpty)
+                    TextField(L.t("Höhe (mm)", "Height (mm)"), value: $m.designHeight, format: .number.precision(.fractionLength(1)))
                         .disabled(m.source.isEmpty)
                     Toggle(isOn: $m.lockAspect) {
-                        Label("Seitenverhältnis beibehalten", systemImage: m.lockAspect ? "lock" : "lock.open")
+                        Label(L.t("Seitenverhältnis beibehalten", "Keep aspect ratio"), systemImage: m.lockAspect ? "lock" : "lock.open")
                     }
-                    Toggle("90° drehen", isOn: $m.settings.rotate90)
-                    Toggle("Spiegeln", isOn: $m.settings.mirror)
-                    TextField("Position X (mm)", value: $m.settings.offsetX, format: .number)
-                    TextField("Position Y (mm)", value: $m.settings.offsetY, format: .number)
-                    Stepper("Kopien: \(m.settings.copies)", value: $m.settings.copies, in: 1...100)
-                    TextField("Abstand (mm)", value: $m.settings.gap, format: .number)
-                    Toggle("Entgitterrahmen", isOn: $m.settings.weedBox)
-                    TextField("Rahmenabstand (mm)", value: $m.settings.weedMargin, format: .number)
+                    Toggle(L.t("90° drehen", "Rotate 90°"), isOn: $m.settings.rotate90)
+                    Toggle(L.t("Spiegeln", "Mirror"), isOn: $m.settings.mirror)
+                    TextField(L.t("Position X (mm)", "Position X (mm)"), value: $m.settings.offsetX, format: .number)
+                    TextField(L.t("Position Y (mm)", "Position Y (mm)"), value: $m.settings.offsetY, format: .number)
+                    Stepper(L.t("Kopien", "Copies") + ": \(m.settings.copies)", value: $m.settings.copies, in: 1...100)
+                    TextField(L.t("Abstand (mm)", "Gap (mm)"), value: $m.settings.gap, format: .number)
+                    Toggle(L.t("Entgitterrahmen", "Weeding box"), isOn: $m.settings.weedBox)
+                    TextField(L.t("Rahmenabstand (mm)", "Box margin (mm)"), value: $m.settings.weedMargin, format: .number)
                 }
 
                 Section {
-                    DisclosureGroup("Plotter-Einstellungen", isExpanded: $showPlotter) {
-                        Text("Messer").font(.headline).padding(.top, 6)
-                        TextField("Messerversatz (mm)", value: $m.settings.bladeOffset, format: .number)
-                        TextField("Overcut (mm)", value: $m.settings.overcut, format: .number)
-                        TextField("Vorschub nach Schnitt (mm)", value: $m.settings.advance, format: .number)
-                        TextField("Geschwindigkeit VS (0 = Plotter)", value: $m.velocity, format: .number)
+                    DisclosureGroup(L.t("Plotter-Einstellungen", "Plotter settings"), isExpanded: $showPlotter) {
+                        Text(L.t("Messer", "Blade")).font(.headline).padding(.top, 6)
+                        TextField(L.t("Messerversatz (mm)", "Blade offset (mm)"), value: $m.settings.bladeOffset, format: .number)
+                        TextField(L.t("Overcut (mm)", "Overcut (mm)"), value: $m.settings.overcut, format: .number)
+                        TextField(L.t("Vorschub nach Schnitt (mm)", "Feed after cut (mm)"), value: $m.settings.advance, format: .number)
+                        TextField(L.t("Geschwindigkeit VS (0 = Plotter)", "Speed VS (0 = plotter)"), value: $m.velocity, format: .number)
                             .disabled(m.format == .dmpl)
-                        TextField("Druck FS (0 = Plotter)", value: $m.force, format: .number)
+                        TextField(L.t("Druck FS (0 = Plotter)", "Force FS (0 = plotter)"), value: $m.force, format: .number)
                             .disabled(m.format == .dmpl)
-                        TextField("Materialbreite (mm)", value: $m.mediaWidth, format: .number)
+                        TextField(L.t("Materialbreite (mm)", "Material width (mm)"), value: $m.mediaWidth, format: .number)
 
-                        Text("Verbindung").font(.headline).padding(.top, 10)
-                        Picker("Format", selection: $m.format) {
+                        Text(L.t("Verbindung", "Connection")).font(.headline).padding(.top, 10)
+                        Picker(L.t("Format", "Format"), selection: $m.format) {
                             ForEach(OutputFormat.allCases) { Text($0.rawValue).tag($0) }
                         }
                         Picker("Port", selection: $m.port) {
                             Text("–").tag("")
                             ForEach(m.ports, id: \.self) { Text($0).tag($0) }
                         }
-                        Button("Ports aktualisieren") { m.refreshPorts() }
-                        Picker("Baudrate", selection: $m.baud) {
+                        Button(L.t("Ports aktualisieren", "Refresh ports")) { m.refreshPorts() }
+                        Picker(L.t("Baudrate", "Baud rate"), selection: $m.baud) {
                             ForEach([1200, 2400, 4800, 9600, 19200, 38400, 57600], id: \.self) { Text("\($0)").tag($0) }
                         }
                         Picker("Handshake", selection: $m.flow) {
-                            ForEach(FlowControl.allCases) { Text($0.rawValue).tag($0) }
+                            ForEach(FlowControl.allCases) { Text($0.label).tag($0) }
                         }
-                        TextField("Abschluss-Befehle (HPGL)", text: $m.endCommands)
+                        TextField(L.t("Abschluss-Befehle (HPGL)", "End commands (HPGL)"), text: $m.endCommands)
                             .disabled(m.format == .dmpl)
-                        Toggle("Steuerleitungen nach dem Senden abschalten", isOn: $m.dropLines)
+                        Toggle(L.t("Steuerleitungen nach dem Senden abschalten", "Drop control lines after sending"), isOn: $m.dropLines)
+                    }
+                }
+
+                Section {
+                    Picker(L.t("Sprache", "Language"), selection: $m.language) {
+                        ForEach(Lang.allCases) { Text($0.label).tag($0) }
                     }
                 }
             }
@@ -103,9 +111,9 @@ struct ContentView: View {
             .frame(minWidth: 320, maxWidth: 400)
 
             VStack(alignment: .leading, spacing: 4) {
-                CutPreview(paths: m.placed, mediaWidth: m.mediaWidth)
+                CutPreview(paths: m.placed, mediaWidth: m.mediaWidth, extent: m.viewExtent)
                 HStack {
-                    Text("Waagrecht = Vorschub, senkrecht = Materialbreite, Lineale in mm")
+                    Text(L.t("Waagrecht = Vorschub, senkrecht = Materialbreite, Lineale in mm", "Horizontal = feed, vertical = material width, rulers in mm"))
                     Spacer()
                     if !m.source.isEmpty {
                         let b = m.placed.bounds
@@ -128,15 +136,15 @@ struct ContentView: View {
 struct ImportInfo: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Was geschnitten wird").font(.headline)
+            Text(L.t("Was geschnitten wird", "What gets cut")).font(.headline)
             Group {
-                Text("• Formate: .svg, .ai und .pdf")
-                Text("• Nur Pfade werden geschnitten.")
-                Text("• Schrift vorher in Pfade umwandeln, sonst wird sie ignoriert.")
-                Text("• .ai mit «PDF-kompatible Datei erstellen» speichern (Standard in Illustrator).")
-                Text("• Pixelbilder werden ignoriert.")
-                Text("• Schnittmasken werden nicht berücksichtigt: Verdecktes wird mitgeschnitten.")
-                Text("• Konturen werden auf ihrer Mittellinie geschnitten, die Strichstärke zählt nicht.")
+                Text(L.t("• Formate: .svg, .ai und .pdf", "• Formats: .svg, .ai and .pdf"))
+                Text(L.t("• Nur Pfade werden geschnitten.", "• Only paths are cut."))
+                Text(L.t("• Schrift vorher in Pfade umwandeln, sonst wird sie ignoriert.", "• Convert text to outlines first, otherwise it is ignored."))
+                Text(L.t("• .ai mit «PDF-kompatible Datei erstellen» speichern (Standard in Illustrator).", "• Save .ai with «Create PDF Compatible File» (Illustrator default)."))
+                Text(L.t("• Pixelbilder werden ignoriert.", "• Raster images are ignored."))
+                Text(L.t("• Schnittmasken werden nicht berücksichtigt: Verdecktes wird mitgeschnitten.", "• Clipping masks are ignored: hidden parts are cut too."))
+                Text(L.t("• Konturen werden auf ihrer Mittellinie geschnitten, die Strichstärke zählt nicht.", "• Strokes are cut along their centre line, stroke width is ignored."))
             }
             .fixedSize(horizontal: false, vertical: true)
         }
@@ -149,6 +157,7 @@ struct ImportInfo: View {
 struct CutPreview: View {
     let paths: [Polyline]
     let mediaWidth: Double
+    let extent: CGSize
 
     var body: some View {
         Canvas { ctx, size in
@@ -156,11 +165,9 @@ struct CutPreview: View {
             let availW = max(size.width - left - right, 10)
             let availH = max(size.height - top - bottom, 10)
 
-            // Ausschnitt: Nullpunkt bis Motiv plus Rand
-            let b = paths.bounds
-            let extent = max(b.maxX, b.maxY, 20)
-            let margin = max(extent * 0.08, 3)
-            let s = min(availW / (max(b.maxX, 20) + margin), availH / (max(b.maxY, 20) + margin))
+            // Zoom aus dem beim Laden eingepassten Sichtbereich, Masse bleiben 1:1
+            let margin = max(max(extent.width, extent.height) * 0.08, 3)
+            let s = min(availW / (extent.width + margin), availH / (extent.height + margin))
             let worldW = availW / s, worldH = availH / s
             let originY = top + availH
             func pt(_ p: CGPoint) -> CGPoint { CGPoint(x: left + p.x * s, y: originY - p.y * s) }

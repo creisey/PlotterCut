@@ -9,6 +9,15 @@ final class AppModel: ObservableObject {
     @Published var ports: [String] = []
     @Published var status = ""
     @Published var busy = false
+    /// Sichtbereich der Vorschau in mm, wird nur beim Laden eingepasst
+    @Published var viewExtent = CGSize(width: 60, height: 60)
+    @Published var language: Lang = L.lang {
+        didSet {
+            L.lang = language
+            UserDefaults.standard.set(language.rawValue, forKey: L.key)
+            status = ""
+        }
+    }
 
     // Gespeicherte Einstellungen
     @Published var settings = CutSettings() { didSet { save() } }
@@ -90,6 +99,22 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Skalierung in %, behält ein freies Seitenverhältnis bei
+    var scalePercent: Double {
+        get { settings.scaleX }
+        set {
+            guard newValue > 0, settings.scaleX > 0 else { return }
+            let f = newValue / settings.scaleX
+            settings.scaleX = newValue
+            settings.scaleY = settings.lockAspect ? newValue : settings.scaleY * f
+        }
+    }
+
+    func fitView() {
+        let b = placed.bounds
+        viewExtent = CGSize(width: max(b.maxX, 20), height: max(b.maxY, 20))
+    }
+
     var lockAspect: Bool {
         get { settings.lockAspect }
         set {
@@ -127,6 +152,7 @@ final class AppModel: ObservableObject {
         let b = paths.bounds
         source = paths.applying(CGAffineTransform(translationX: -b.minX, y: -b.minY))
         fileName = "Demo"
+        fitView()
     }
 
     // MARK: Doppelte Pfade
@@ -166,8 +192,12 @@ final class AppModel: ObservableObject {
             source = Self.removeDuplicates(source)
             let removed = before - source.count
             fileName = url.lastPathComponent
-            status = removed > 0 ? "\(source.count) Pfade geladen, \(removed) doppelte entfernt"
-                                 : "\(source.count) Pfade geladen"
+            settings.scaleX = 100
+            settings.scaleY = 100
+            fitView()
+            status = removed > 0 ? L.t("\(source.count) Pfade geladen, \(removed) doppelte entfernt",
+                                       "\(source.count) paths loaded, \(removed) duplicates removed")
+                                 : L.t("\(source.count) Pfade geladen", "\(source.count) paths loaded")
         } catch {
             status = error.localizedDescription
         }
@@ -183,7 +213,7 @@ final class AppModel: ObservableObject {
     }
 
     private func send(_ paths: [Polyline]) {
-        guard !port.isEmpty else { status = "Kein Port gewählt"; return }
+        guard !port.isEmpty else { status = L.t("Kein Port gewählt", "No port selected"); return }
         let pts = Knife.prepare(paths, offset: settings.bladeOffset, overcut: settings.overcut)
         let text: String
         switch format {
@@ -194,12 +224,12 @@ final class AppModel: ObservableObject {
         let data = Data(text.utf8)
         let port = port, baud = baud, flow = flow, dropLines = dropLines
         busy = true
-        status = "Sende …"
+        status = L.t("Sende …", "Sending …")
         Task {
             let result = await Task.detached { () -> String in
                 do {
                     try SerialPort.send(data, to: port, baud: baud, flow: flow, dropLines: dropLines)
-                    return "Gesendet"
+                    return L.t("Gesendet", "Sent")
                 } catch {
                     return error.localizedDescription
                 }
